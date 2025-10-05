@@ -51,6 +51,7 @@ jobs:
               --name "$APP_NAME" \
               -e TELEGRAM_TOKEN="${{ secrets.TELEGRAM_TOKEN }}" \
               -e ALLOWED_USERS="${{ secrets.ALLOWED_USERS }}" \
+              -e UPDATE_INTERVAL="3600" \
               -v /var/run/docker.sock:/var/run/docker.sock \
               --user root \
               "$APP_NAME":latest
