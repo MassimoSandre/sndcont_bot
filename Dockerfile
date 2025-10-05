@@ -2,6 +2,7 @@ FROM python:3.11-slim
 
 WORKDIR /app
 COPY requirements /app/
+RUN pip install --no-cache-dir "python-telegram-bot[job-queue]>=22.0" docker
 RUN pip install --no-cache-dir -r requirements
 
 COPY bot/ /app/
