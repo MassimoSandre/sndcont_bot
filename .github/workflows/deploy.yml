@@ -1,0 +1,57 @@
+name: Deploy to VPS
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to VPS (using password)
+        uses: appleboy/ssh-action@v0.1.6
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          password: ${{ secrets.VPS_PASSWORD }}
+          script: |
+
+            # Parametri dinamici dal workflow
+            REPO="git@github.com:${{ github.repository }}.git"
+            BRANCH="${{ github.ref_name }}"
+            APP_NAME="$(basename '${{ github.repository }}')"
+            BASE_DIR="/home/${{ secrets.VPS_USER }}/apps"
+            APP_DIR="$BASE_DIR/$APP_NAME"
+
+            echo "Clonando o aggiornando $REPO ($BRANCH)..."
+
+            mkdir -p "$BASE_DIR"
+
+            if [ ! -d "$APP_DIR/.git" ]; then
+              echo "→ Clonazione iniziale..."
+              git clone --branch "$BRANCH" "$REPO" "$APP_DIR"
+            else
+              echo "→ Aggiornamento esistente..."
+              cd "$APP_DIR"
+              git fetch origin "$BRANCH"
+              git reset --hard "origin/$BRANCH"
+            fi
+
+            cd "$APP_DIR"
+
+            echo "→ Costruzione Docker..."
+            docker build -t "$APP_NAME" .
+
+            echo "→ Riavvio container..."
+            docker stop "$APP_NAME" >/dev/null 2>&1 || true
+            docker rm "$APP_NAME" >/dev/null 2>&1 || true
+            docker run -d \
+              --name "$APP_NAME" \
+              -e TELEGRAM_TOKEN="${{ secrets.TELEGRAM_TOKEN }}" \
+              -e ALLOWED_USERS="${{ secrets.ALLOWED_USERS }}" \
+              -v /var/run/docker.sock:/var/run/docker.sock \
+              "$APP_NAME":latest
+
+            echo "Deploy completato con successo."
